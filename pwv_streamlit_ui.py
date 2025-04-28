@@ -51,8 +51,8 @@ def init_settings():
         'dp_peak_frac':    0.5,
         'ec_diff_frac':    0.2,
         'dp_diff_frac':    0.2,
-        'tt_min_ms':       0.0,
-        'tt_max_ms':       100.0
+        'tt_min_ms':       20.0,
+        'tt_max_ms':       30.0
     }
     for k, v in defaults.items():
         if k not in st.session_state:
