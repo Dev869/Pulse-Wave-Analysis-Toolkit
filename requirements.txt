@@ -1,4 +1,14 @@
+streamlit
+streamlit-drawable-canvas
+Pillow
 numpy
+pandas
+matplotlib
+pwv-multiframe
+pwv-enhanced-fixed
 opencv-python
 pydicom
-matplotlib
+scipy
+subprocess
+Image
+ImageTK

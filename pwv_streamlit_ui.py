@@ -146,6 +146,31 @@ with tab_settings:
         min_value=1.0, max_value=1000.0,
         value=st.session_state.tt_max_ms
     )
+    # ─── Distance Picker ─────────────────────────────────────────────────────
+    if st.button("Measure Separation"):
+        # Dump the first frame (or any frame you want) to PNG
+        tmp_png = os.path.join(tempfile.gettempdir(), f"frame_for_distance.png")
+        frame = prox_stack[0]  # or choose index frames_to_process - 1, etc.
+        arr = ((frame - frame.min()) / (frame.ptp() + 1e-6) * 255).astype("uint8")
+        from PIL import Image
+        Image.fromarray(arr).save(tmp_png)
+
+        # Launch the external picker (you wrote distance_tool.py)
+        import subprocess
+        proc = subprocess.run(
+            ["python3", "/full/path/to/distance_tool.py", tmp_png],
+            capture_output=True, text=True
+        )
+        if proc.returncode == 0:
+            # parse: “Pixel distance: 123.45”
+            pix = float(proc.stdout.strip().split(":")[1])
+            mm = pix / st.session_state.pix_per_mm
+            st.session_state["probe_distance_mm"] = mm
+            st.success(f"Measured separation: {mm:.2f} mm")
+        else:
+            st.error(f"Distance tool failed:\n{proc.stderr}")
+    st.write("")  # spacing
+    # ────────────────────────────────────────────────────────────────────────────
 
 # === ANALYSIS TAB ============================================================
 with tab_analysis:
