@@ -339,7 +339,11 @@ if st.button("Analyze"):
             avg_p = st.session_state['df_prox_filt']['TT_ms'].mean()
             avg_d = st.session_state['df_dist_filt']['TT_ms'].mean()
             dt = abs(avg_d - avg_p)
-            dist_mm = 1 / st.session_state.pix_per_mm
+            dist_mm = st.session_state.get(
+                "probe_distance_mm",
+                1.0/ st.session_state.pix_per_mm
+            )
+
             pwv = dist_mm / (dt/1000) if dt > 0 else np.nan
 
             st.session_state['summary'] = {
