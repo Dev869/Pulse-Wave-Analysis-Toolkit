@@ -146,31 +146,7 @@ with tab_settings:
         min_value=1.0, max_value=1000.0,
         value=st.session_state.tt_max_ms
     )
-    # ─── Distance Picker ─────────────────────────────────────────────────────
-    if st.button("Measure Separation"):
-        # Dump the first frame (or any frame you want) to PNG
-        tmp_png = os.path.join(tempfile.gettempdir(), f"frame_for_distance.png")
-        frame = prox_stack[0]  # or choose index frames_to_process - 1, etc.
-        arr = ((frame - frame.min()) / (frame.ptp() + 1e-6) * 255).astype("uint8")
-        from PIL import Image
-        Image.fromarray(arr).save(tmp_png)
-
-        # Launch the external picker (you wrote distance_tool.py)
-        import subprocess
-        proc = subprocess.run(
-            ["python3", "/full/path/to/distance_tool.py", tmp_png],
-            capture_output=True, text=True
-        )
-        if proc.returncode == 0:
-            # parse: “Pixel distance: 123.45”
-            pix = float(proc.stdout.strip().split(":")[1])
-            mm = pix / st.session_state.pix_per_mm
-            st.session_state["probe_distance_mm"] = mm
-            st.success(f"Measured separation: {mm:.2f} mm")
-        else:
-            st.error(f"Distance tool failed:\n{proc.stderr}")
-    st.write("")  # spacing
-    # ────────────────────────────────────────────────────────────────────────────
+    
 
 # === ANALYSIS TAB ============================================================
 with tab_analysis:
@@ -199,7 +175,45 @@ with tab_analysis:
             "<style>.stButton>button {background-color:#28a745;color:white;}</style>",
             unsafe_allow_html=True
         )
-        if st.button("Analyze"):
+
+# ─── Distance Picker ─────────────────────────────────────────────────────
+if st.button("Measure Separation"):
+    # 1) Dump one frame from each stack
+    tmp1 = os.path.join(tempfile.gettempdir(), "prox_frame.png")
+    tmp2 = os.path.join(tempfile.gettempdir(), "dist_frame.png")
+
+    # pick the same index (0 here) or whatever you want:
+    frame_p = prox_stack[0]
+    frame_d = dist_stack[0]
+
+    # normalize to 0–255 uint8
+    arr_p = ((frame_p - frame_p.min()) / (np.ptp(frame_p) + 1e-6) * 255).astype("uint8")
+    arr_d = ((frame_d - frame_d.min()) / (np.ptp(frame_d) + 1e-6) * 255).astype("uint8")
+
+    from PIL import Image
+    Image.fromarray(arr_p).save(tmp1)
+    Image.fromarray(arr_d).save(tmp2)
+
+    # 2) Call the picker
+    import subprocess, sys
+    proc = subprocess.run(
+        [sys.executable, "distance_tool.py", tmp1, tmp2],
+        capture_output=True, text=True
+    )
+
+    # 3) Handle the result
+    if proc.returncode == 0 and proc.stdout.startswith("Pixel distance:"):
+        pix = float(proc.stdout.split(":")[1])
+        mm  = pix / st.session_state.pix_per_mm
+        st.session_state["probe_distance_mm"] = mm
+        st.success(f"Measured separation: {mm:.2f} mm")
+    else:
+        st.error(f"Distance tool failed:\n{proc.stderr}")
+
+st.write("")  # spacing
+# ────────────────────────────────────────────────────────────────────────────
+
+if st.button("Analyze"):
             # run analysis and stash into session_state
             prox_records, dist_records = [], []
             frame_images_prox, frame_images_dist = [], []
