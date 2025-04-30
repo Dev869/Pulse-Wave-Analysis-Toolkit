@@ -63,3 +63,97 @@ streamlit run pwv_app.py
 
 ---
 
+## Setup & Requirements (Windows)
+
+> Tested on Windows 10/11. Run commands in an **Administrator** PowerShell or CMD.
+
+### 1. Clone the Repository
+```powershell
+git clone https://github.com/Dev869/pulsewave-visual.git
+cd pulsewave-visual
+```
+
+### 2. Create & Activate a Virtual Environment
+```powershell
+python -m venv .venv
+# Activate (PowerShell)
+.\.venv\Scripts\Activate.ps1
+# Or CMD
+.\.venv\Scripts\activate.bat
+```
+
+### 3. Upgrade pip & Build Tools
+```powershell
+pip install --upgrade pip setuptools wheel
+```
+
+### 4. Install System Dependencies
+```powershell
+pip install opencv-python-headless
+# Optional: Tkinter support
+pip install tk
+```
+
+### 5. Install Python Requirements
+```powershell
+pip install -r requirements.txt
+```
+
+### 6. Run the Streamlit App
+```powershell
+streamlit run pwv_app.py
+```
+
+> Or:
+> ```powershell
+> python -m streamlit run pwv_app.py
+> ```
+
+---
+
+## Setup & Requirements (Linux)
+
+> Tested on Ubuntu 20.04 / Debian 11
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/Dev869/pulsewave-visual.git
+cd pulsewave-visual
+```
+
+### 2. Create & Activate a Python Virtual Environment
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Upgrade pip & Build Tools
+```bash
+pip install --upgrade pip setuptools wheel
+```
+
+### 4. Install System Dependencies
+```bash
+sudo apt update
+sudo apt install -y python3-tk libtcl8.6 libtk8.6 tcl-dev tk-dev pkg-config libopencv-dev
+```
+
+### 5. Install Python Requirements
+```bash
+pip install -r requirements.txt
+```
+
+### 6. Run the Streamlit App
+```bash
+streamlit run pwv_app.py
+```
+
+> Or:
+> ```bash
+> python3 -m streamlit run pwv_app.py
+> ```
+
+---
+
+## Usage
+### Settings

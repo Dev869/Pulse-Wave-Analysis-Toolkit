@@ -64,7 +64,7 @@ def measure_pwv_frame(image: np.ndarray) -> float:
     Process a single ultrasound frame (BGR image array) and return the time difference (ms)
     between ECG and Doppler upstroke initiations for that frame.
     """
-    from pwv_enhanced_fixed import (
+    from pwv_visual_analysis import (
         get_calibration_from_image,
         create_masks,
         extract_ecg_trace,
