@@ -1,4 +1,4 @@
-# PWV (Pulse Wave Velocity) Visual Analysis Toolkit
+# PWV (Pulse Wave Velocity) Signal Extraction & Detection Toolkit
 
 ## Compatibility Notes & Intended Usage
 
@@ -187,3 +187,13 @@ This will open first the *proximal* image and second the *distal* image where yo
 ### Results
 
 Here, you can see the traces for each frame analzyed as well as the data tables containing the TT (transit times) for both the proximal and distal frames.
+
+### Acknowledgements
+
+Williams R, Needles A, Cherin E, Zhou YQ, Henkelman RM, Adamson SL, Foster FS. Noninvasive ultrasonic measurement of regional and local pulse-wave velocity in mice. Ultrasound Med Biol. 2007 Sep;33(9):1368-75. doi: 10.1016/j.ultrasmedbio.2007.03.012. Epub 2007 Jun 11. PMID: 17561330.
+
+Lee L, Cui JZ, Cua M, Esfandiarei M, Sheng X, Chui WA, et al. (2016) Aortic and Cardiac Structure and Function Using High-Resolution Echocardiography and Optical Coherence Tomography in a Mouse Model of Marfan Syndrome PLoS ONE 11(11): e0164778. doi:10.1371/journal.pone.0164778
+
+https://www.ahajournals.org/doi/suppl/10.1161/HYPERTENSIONAHA.114.03312
+
+This project used AI tools such as [ChatGPT](https://openai.com/chatgpt) to assist with code development, documentation, and/or problem-solving during the research process.
