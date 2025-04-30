@@ -3,7 +3,9 @@
 ## Setup & Requirements (macOS)
 
 > If you don’t have Git installed, download it from https://git-scm.com/.
+
 > If you don't have Python 3 istalled, download it from http://python.org/downloads/
+
 > If you don't have Homebrew installed, follow the steps at https://brew.sh/
 
 ### 1. Clone the Repository
