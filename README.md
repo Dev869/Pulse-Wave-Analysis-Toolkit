@@ -1,5 +1,10 @@
 # PWV (Pulse Wave Velocity) Visual Analysis Toolkit
 
+## Compatibility Notes & Intended Usage
+
+- This program is only designed for DICOM files output from a VisualSonics Vevo. The program has only been tested so far on a VisualSonics Vevo 2100.
+- So far, the program is only able to calculate PWV on straight arteries due to the current methods of measuring distance & visual analysis. There are plans to adapt the program to accomodate a curved artery (like the aortic arch).
+
 ## Setup & Requirements (macOS)
 
 > If you don’t have Git installed, download it from https://git-scm.com/.
@@ -157,3 +162,37 @@ streamlit run pwv_app.py
 
 ## Usage
 ### Settings
+- `Pixels per mm`: Your image’s spatial calibration. Enter how many pixels on the image correspond to 1 mm in the real world (e.g. from a known scale bar). This lets the app convert pixel distances into millimetres.
+
+- `Time scale bar pixels`: The length of the on-image time bar in pixels (e.g. if the bar spans 839 pixels in the frame). Combined with the next setting, this gives your temporal calibration.
+
+- `Time scale bar seconds`: The real‐world duration of that time bar (e.g. 0.7 s). Dividing this by the pixel length (Time scale bar seconds ÷ Time scale bar pixels) yields ms/pixel, used to convert pixel‐based delays into milliseconds.
+
+- `ECG peak fraction`: A fraction (0–1) of the maximum ECG‐trace amplitude used to detect valid R‐wave peaks (e.g. 0.5 means only peaks ≥ 50% of the signal’s max are counted).
+
+- `Doppler peak fraction`: Same idea for the Doppler signal: only count Doppler upstrokes whose peak amplitude is at least this fraction of its max.
+
+- `Min ECG diff fraction`: A fraction (0–1) of the ECG’s peak‐to‐baseline amplitude that must be exceeded to consider a beat valid (filters out small noise blips).
+
+- `Min Doppler diff fraction`: Like above, but for the Doppler trace’s peak‐to‐baseline amplitude.
+
+- `Min TT to include (ms)` and `Max TT to include (ms)`: Exclude any transit‐time measurements (delay between ECG and Doppler upstrokes) that fall outside this millisecond window. Useful for ignoring physiologically implausible outliers.
+
+- `Frames to process`: How many consecutive frames (from the start of your uploaded DICOM or TIFF stack) the app will analyze. More frames = more cycles = more robust average but longer compute time.
+
+- `Measure Probe Separation`: Click once on the Proximal image and once on the Distal image to define the physical separation of your measurement points. The app converts your two clicks (in pixels) into millimetres using your Pixels per mm setting.
+
+- **Profiles**: Save or load named profiles of all the above settings so you can quickly switch between different calibration or threshold configurations.
+
+### Analysis
+
+1. Upload your **DICOM** (.dcm) for the proximal and distal locations.
+2. Measure the distance by clicking the **Measure Distance** button.
+
+- **IMPORTANT**: Be as accurate as possible in this step. You will be *manually selecting* the points for the proximal and distal locations. 
+
+This will open first the *proximal* image and second the *distal* image where you are meant to click the points on the image.
+
+### Results
+
+Here, you can see the traces for each frame analzyed as well as the data tables containing the TT (transit times) for both the proximal and distal frames.
