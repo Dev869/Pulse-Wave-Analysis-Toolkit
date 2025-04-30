@@ -15,17 +15,13 @@
 
 ### 1. Clone the Repository
 ```bash
-# Clone the GitHub repo
 git clone https://github.com/Dev869/pulsewave-visual.git
 cd pulsewave-visual
 ```
 
 ### 2. Create & Activate a Python Virtual Environment
 ```bash
-# Create a new virtual environment in `.venv`
 python3 -m venv .venv
-
-# Activate it
 source .venv/bin/activate
 ```
 
@@ -36,19 +32,16 @@ pip install --upgrade pip setuptools wheel
 
 ### 4. Install System Dependencies (Homebrew)
 ```bash
-# Install pkg-config & OpenCV & Tkinter
 brew install pkg-config opencv tcl-tk
 ```
 
 ### 5. Install Python Requirements
 ```bash
-# Install only the required PyPI packages
 pip install -r requirements.txt
 ```
 
 ### 6. Run the Streamlit App
 ```bash
-# Launch the PWV UI in your browser
 streamlit run pwv_app.py
 ```
 
@@ -94,9 +87,7 @@ pip install --upgrade pip setuptools wheel
 
 ### 4. Install System Dependencies
 ```powershell
-pip install opencv-python-headless
-# Optional: Tkinter support
-pip install tk
+pip install opencv-python-headless tk
 ```
 
 ### 5. Install Python Requirements
