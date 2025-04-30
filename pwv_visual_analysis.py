@@ -19,8 +19,6 @@ Dependencies:
     - SciPy
     - os
 """
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
 import threading
 import os
 
@@ -381,6 +379,7 @@ def extract_doppler_trace(enhanced_mask, edges, enhanced_gray, width):
     
     return smoothed_trace
 
+# Unused function
 def detect_upstroke_initiations(trace, trace_name="trace", min_distance=100):
     """
     Detect the exact points where the trace begins rising from baseline.
@@ -443,7 +442,6 @@ def detect_upstroke_initiations(trace, trace_name="trace", min_distance=100):
     
     return sorted(filtered_points)    
 
-def measure_pwv(image_path):
     """
     Measure time difference between ECG and Doppler signals using improved trace extraction.
     
@@ -634,212 +632,6 @@ def measure_pwv(image_path):
         'csv_path': csv_path,
         'visualization_path': output_path
     }
-
-class PWVUI:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("PWV Analysis Tool")
-        self.root.geometry("900x700")
-        
-        # Configure grid weight
-        self.root.grid_columnconfigure(0, weight=1)
-        self.root.grid_rowconfigure(0, weight=1)
-        
-        # Main container with padding
-        self.main_frame = ttk.Frame(self.root, padding="20")
-        self.main_frame.grid(row=0, column=0, sticky="nsew")
-        self.main_frame.grid_columnconfigure(0, weight=1)
-        
-        # Image selection frame
-        self.create_file_selection_frame()
-        
-        # Analysis frame
-        self.create_analysis_frame()
-        
-        # Results frame
-        self.create_results_frame()
-        
-        # Status bar
-        self.create_status_bar()
-        
-        # Apply modern styling
-        self.apply_styling()
-    
-    def create_file_selection_frame(self):
-        file_frame = ttk.LabelFrame(self.main_frame, text="Image Selection", padding="10")
-        file_frame.grid(row=0, column=0, sticky="ew", pady=(0, 10))
-        file_frame.grid_columnconfigure(0, weight=1)
-        
-        self.file_path = tk.StringVar()
-        self.file_entry = ttk.Entry(file_frame, textvariable=self.file_path)
-        self.file_entry.grid(row=0, column=0, sticky="ew", padx=(0, 5))
-        
-        self.browse_button = ttk.Button(
-            file_frame, 
-            text="Browse...", 
-            command=self.browse_file,
-            style="Accent.TButton"
-        )
-        self.browse_button.grid(row=0, column=1)
-    
-    def create_analysis_frame(self):
-        analysis_frame = ttk.Frame(self.main_frame)
-        analysis_frame.grid(row=1, column=0, sticky="ew", pady=(0, 10))
-        analysis_frame.grid_columnconfigure(0, weight=1)
-        
-        self.analyze_button = ttk.Button(
-            analysis_frame,
-            text="Run Analysis",
-            command=self.run_analysis,
-            style="Accent.TButton"
-        )
-        self.analyze_button.grid(row=0, column=0)
-        
-        self.progress = ttk.Progressbar(
-            analysis_frame,
-            mode='indeterminate',
-            length=200
-        )
-        self.progress.grid(row=0, column=1, padx=(10, 0))
-    
-    def create_results_frame(self):
-        results_frame = ttk.LabelFrame(self.main_frame, text="Results", padding="10")
-        results_frame.grid(row=2, column=0, sticky="nsew", pady=(0, 10))
-        results_frame.grid_columnconfigure(0, weight=1)
-        results_frame.grid_rowconfigure(0, weight=1)
-        
-        # Create text widget with scrollbar
-        self.result_text = tk.Text(
-            results_frame,
-            height=20,
-            width=80,
-            font=('Helvetica', 10),
-            wrap=tk.WORD
-        )
-        scrollbar = ttk.Scrollbar(results_frame, orient="vertical", command=self.result_text.yview)
-        self.result_text.configure(yscrollcommand=scrollbar.set)
-        
-        self.result_text.grid(row=0, column=0, sticky="nsew")
-        scrollbar.grid(row=0, column=1, sticky="ns")
-    
-    def create_status_bar(self):
-        self.status_var = tk.StringVar()
-        self.status_var.set("Ready")
-        status_bar = ttk.Label(
-            self.main_frame,
-            textvariable=self.status_var,
-            relief=tk.SUNKEN,
-            padding=(10, 5)
-        )
-        status_bar.grid(row=3, column=0, sticky="ew")
-    
-    def apply_styling(self):
-        style = ttk.Style()
-        
-        # Configure accent button style
-        style.configure(
-            "Accent.TButton",
-            padding=10,
-            font=('Helvetica', 10, 'bold')
-        )
-        
-        # Configure label frame style
-        style.configure(
-            "TLabelframe",
-            padding=10,
-            relief="solid"
-        )
-        
-        # Configure text area
-        self.result_text.configure(
-            background="#ffffff",
-            foreground="#000000",
-            selectbackground="#0078d7",
-            selectforeground="#ffffff",
-            padx=10,
-            pady=10
-        )
-    
-    def update_status(self, message):
-        self.status_var.set(message)
-        self.root.update_idletasks()
-    
-    def browse_file(self):
-        filename = filedialog.askopenfilename(
-            title="Select Ultrasound Image",
-            filetypes=[
-                ("Image files", "*.png *.jpg *.jpeg"),
-                ("All files", "*.*")
-            ]
-        )
-        if filename:
-            self.file_path.set(filename)
-            self.update_status(f"Selected: {os.path.basename(filename)}")
-    
-    def run_analysis(self):
-        if not self.file_path.get():
-            messagebox.showerror("Error", "Please select an image file first")
-            return
-        
-        self.result_text.delete(1.0, tk.END)
-        self.progress.start()
-        self.analyze_button.state(['disabled'])
-        self.update_status("Analysis in progress...")
-        
-        thread = threading.Thread(target=self._run_analysis_thread)
-        thread.start()
-    
-    def _run_analysis_thread(self):
-        try:
-            # Store results in instance variable to ensure they're available
-            self.analysis_results = measure_pwv(self.file_path.get())
-            
-            # Update UI in main thread
-            self.root.after(0, self._update_results)
-        
-        except Exception as e:
-            self.root.after(0, self._show_error, str(e))
-        finally:
-            self.root.after(0, self._analysis_complete)
-    
-    def _update_results(self):
-        try:
-            self.result_text.insert(tk.END, "Analysis completed successfully!\n\n")
-            
-            results = self.analysis_results  # Use stored results
-            
-            # Insert time differences
-            if 'time_differences' in results:
-                for i, td in enumerate(results['time_differences'], 1):
-                    time_ms = td * 1000  # Convert seconds to milliseconds
-                    self.result_text.insert(tk.END, f"Cardiac Cycle {i}:\n")
-                    self.result_text.insert(tk.END, f"  Time difference: {time_ms:.1f} ms\n")
-            
-            # Insert summary statistics
-            if 'time_differences' in results and len(results['time_differences']) > 0:
-                avg_time = np.mean(results['time_differences']) * 1000
-                self.result_text.insert(tk.END, f"\nAverage time difference: {avg_time:.1f} ms\n")
-                
-                if len(results['time_differences']) > 1:
-                    std_time = np.std([td * 1000 for td in results['time_differences']])
-                    self.result_text.insert(tk.END, f"Standard deviation: {std_time:.1f} ms\n")
-            
-            # Insert file paths
-            self.result_text.insert(tk.END, f"\nResults saved to:\n")
-            self.result_text.insert(tk.END, f"Report: {results['report_path']}\n")
-            self.result_text.insert(tk.END, f"CSV data: {results['csv_path']}\n")
-            self.result_text.insert(tk.END, f"Visualization: {results['visualization_path']}\n")
-        
-        except Exception as e:
-            self.result_text.insert(tk.END, f"Error updating results: {str(e)}\n")
-    
-    def _show_error(self, error_msg):
-        messagebox.showerror("Error", f"Error during analysis: {error_msg}")
-        self.result_text.insert(tk.END, f"Error: {error_msg}\n")
-    
-    def _analysis_complete(self):
-        self.progress.stop()
-        self.analyze_button.state(['!disabled'])
 
 def main():
     root = tk.Tk()
