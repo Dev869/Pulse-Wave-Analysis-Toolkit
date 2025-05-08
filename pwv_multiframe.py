@@ -3,22 +3,12 @@ import argparse
 import cv2
 import numpy as np
 import pydicom
+import pandas as pd
 from PIL import Image
+from pydicom.dataset import Dataset, FileMetaDataset
+from tempfile import TemporaryDirectory
 
-# Detect and Load Image Stack (DICOM or TIFF)
-def load_image_stack(path):
-    # Attempt to accurately identify file type
-    # If DICOM header not found, try TIFF
-    try:
-        with Image.open(path) as img:
-            img.verify()  # Verify if it's a TIFF
-            print("Detected as TIFF based on PIL verification.")
-            return load_tiff_series(path)
-    except Exception:
-        return load_dicom_series(path)
-        pass
-    
-    raise ValueError("File could not be identified as DICOM or TIFF.")
+
 def load_dicom_series(path: str) -> np.ndarray:
     """
     Load a multi-frame DICOM file and return a 4D numpy array of shape
@@ -74,17 +64,6 @@ def load_dicom_series(path: str) -> np.ndarray:
         out.append(bgr)
     return np.stack(out, axis=0)
 
-# Function to load TIFF series
-def load_tiff_series(filepath):
-    try:
-        img = Image.open(filepath)
-        frames = []
-        for i in range(img.n_frames):
-            img.seek(i)
-            frames.append(np.array(img))
-        return np.array(frames)
-    except Exception as e:
-        raise ValueError(f"Error loading TIFF file: {str(e)}")
 
 def measure_pwv_frame(image: np.ndarray) -> float:
     """

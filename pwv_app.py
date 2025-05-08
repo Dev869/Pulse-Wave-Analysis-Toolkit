@@ -3,8 +3,6 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
-from pwv_multiframe import load_image_stack
-
 from pwv_multiframe import load_dicom_series
 import pwv_visual_analysis
 from pwv_visual_analysis import (
@@ -153,8 +151,8 @@ with tab_settings:
 with tab_analysis:
     st.title("Upload & Frame Selection")
 
-    prox_file = st.file_uploader("Proximal DICOM/.tiff", type=["dcm","tif","tiff"])
-    dist_file = st.file_uploader("Distal DICOM/.tiff",   type=["dcm","tif","tiff"])
+    prox_file = st.file_uploader("Proximal DICOM", type=["dcm"])
+    dist_file = st.file_uploader("Distal DICOM",   type=["dcm"])
 
     if prox_file and dist_file:
         tmpd = tempfile.mkdtemp()
@@ -163,8 +161,8 @@ with tab_analysis:
         open(ppath, 'wb').write(prox_file.read())
         open(dpath, 'wb').write(dist_file.read())
 
-        prox_stack = load_image_stack(ppath)
-        dist_stack = load_image_stack(dpath)
+        prox_stack = load_dicom_series(ppath)
+        dist_stack = load_dicom_series(dpath)
         max_frames = min(len(prox_stack), len(dist_stack))
         frames_to_process = st.number_input(
             "Frames to process",
