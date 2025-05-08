@@ -89,11 +89,6 @@ def create_masks(image):
     upper_green = np.array([80, 255, 255])
     ecg_mask = cv2.inRange(hsv_ecg, lower_green, upper_green)
     
-    # Save the cropped regions for reference
-    cv2.imwrite(os.path.join(output_folder, "ecg_region_cropped.png"), ecg_region)
-    cv2.imwrite(os.path.join(output_folder, "doppler_region_cropped.png"), doppler_region)
-    cv2.imwrite(os.path.join(output_folder, "ecg_mask_cropped.png"), ecg_mask)
-    
     regions = {
         'ecg_y_start': ecg_y_start,
         'ecg_y_end': ecg_y_end,
@@ -166,49 +161,28 @@ def enhance_doppler_region(doppler_region):
     """
     # Convert to grayscale
     gray = cv2.cvtColor(doppler_region, cv2.COLOR_BGR2GRAY)
-    
-    # Save original grayscale
-    cv2.imwrite(os.path.join(output_folder, "doppler_gray_original.png"), gray)
-    
     # Step 1: Apply noise reduction
     # Use Non-Local Means Denoising for better noise removal while preserving edges
     denoised = cv2.fastNlMeansDenoising(gray, None, h=10, searchWindowSize=21, templateWindowSize=7)
-    
-    # Save denoised image
-    cv2.imwrite(os.path.join(output_folder, "doppler_denoised.png"), denoised)
+
     
     # Step 2: Apply CLAHE (Contrast Limited Adaptive Histogram Equalization)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
     enhanced = clahe.apply(denoised)
     
-    # Save contrast-enhanced image
-    cv2.imwrite(os.path.join(output_folder, "doppler_contrast_enhanced.png"), enhanced)
-    
     # Step 3: Apply bilateral filtering to further reduce noise while preserving edges
     bilateral = cv2.bilateralFilter(enhanced, d=9, sigmaColor=75, sigmaSpace=75)
     
-    # Save bilaterally filtered image
-    cv2.imwrite(os.path.join(output_folder, "doppler_bilateral.png"), bilateral)
-    
     # Step 4: Apply Gaussian blur to reduce remaining noise
     blurred = cv2.GaussianBlur(bilateral, (5, 5), 0)
-    
-    # Save blurred image
-    cv2.imwrite(os.path.join(output_folder, "doppler_blurred.png"), blurred)
     
     # Step 5: Remove horizontal lines (0 mm/s line)
     horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (50, 1))
     horizontal_lines = cv2.morphologyEx(blurred, cv2.MORPH_OPEN, horizontal_kernel)
     no_horizontal = cv2.subtract(blurred, horizontal_lines)
     
-    # Save image without horizontal lines
-    cv2.imwrite(os.path.join(output_folder, "doppler_no_horizontal.png"), no_horizontal)
-    
     # Step 6: Apply Otsu's thresholding for adaptive threshold determination
     _, otsu_thresh = cv2.threshold(no_horizontal, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    
-    # Save Otsu thresholded image
-    cv2.imwrite(os.path.join(output_folder, "doppler_otsu_thresh.png"), otsu_thresh)
     
     # Step 7: Apply adaptive thresholding for even better segmentation
     adaptive_thresh = cv2.adaptiveThreshold(
@@ -219,28 +193,19 @@ def enhance_doppler_region(doppler_region):
         11, 2
     )
     
-    # Save adaptive thresholded image
-    cv2.imwrite(os.path.join(output_folder, "doppler_adaptive_thresh.png"), adaptive_thresh)
     
     # Step 8: Combine Otsu and adaptive thresholds for better results
     combined_thresh = cv2.bitwise_or(otsu_thresh, adaptive_thresh)
-    
-    # Save combined threshold
-    cv2.imwrite(os.path.join(output_folder, "doppler_combined_thresh.png"), combined_thresh)
+
     
     # Step 9: Clean up with morphological operations
     kernel = np.ones((3, 3), np.uint8)
     morph_cleaned = cv2.morphologyEx(combined_thresh, cv2.MORPH_OPEN, kernel)
     morph_cleaned = cv2.morphologyEx(morph_cleaned, cv2.MORPH_CLOSE, kernel)
-    
-    # Save morphologically cleaned image
-    cv2.imwrite(os.path.join(output_folder, "doppler_morph_cleaned.png"), morph_cleaned)
-    
+ 
     # Step 10: Apply edge detection to help with trace extraction
     edges = cv2.Canny(enhanced, 50, 150)
     
-    # Save edge detection result
-    cv2.imwrite(os.path.join(output_folder, "doppler_edges.png"), edges)
     
     # Return both the binary mask and the enhanced grayscale for different approaches
     return morph_cleaned, edges, no_horizontal
@@ -290,33 +255,6 @@ def extract_doppler_trace(enhanced_mask, edges, enhanced_gray, width):
     if width > 1000:
         trace_from_intensity[1000:] = trace_from_intensity[999]
 
-    # Visualize all three methods
-    plt.figure(figsize=(15, 10))
-    
-    # Plot trace from mask
-    plt.subplot(3, 1, 1)
-    plt.plot(height - trace_from_mask, 'r-', label='From Mask')
-    plt.title('Doppler Trace Extracted from Mask')
-    plt.grid(True)
-    plt.legend()
-    
-    # Plot trace from edges
-    plt.subplot(3, 1, 2)
-    plt.plot(height - trace_from_edges, 'g-', label='From Edges')
-    plt.title('Doppler Trace Extracted from Edges')
-    plt.grid(True)
-    plt.legend()
-    
-    # Plot trace from intensity
-    plt.subplot(3, 1, 3)
-    plt.plot(height - trace_from_intensity, 'b-', label='From Intensity')
-    plt.title('Doppler Trace Extracted from Intensity Profile')
-    plt.grid(True)
-    plt.legend()
-    
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_folder, "doppler_trace_comparison.png"))
-    plt.close()
     
     # Try to determine the best method based on signal quality
     # Calculate signal quality metrics for each method
@@ -369,13 +307,6 @@ def extract_doppler_trace(enhanced_mask, edges, enhanced_gray, width):
         print(f"Warning: Savgol filter failed ({e}), using raw normalized trace")
         smoothed_trace = normalized_trace
     
-    # Save the final trace
-    plt.figure(figsize=(12, 6))
-    plt.plot(smoothed_trace, 'b-')
-    plt.title(f"Final Doppler Trace (using {best_method} method)")
-    plt.grid(True)
-    plt.savefig(os.path.join(output_folder, "doppler_final_trace.png"))
-    plt.close()
     
     return smoothed_trace
 
@@ -389,31 +320,6 @@ def detect_upstroke_initiations(trace, trace_name="trace", min_distance=100):
     
     # Calculate the second derivative (acceleration)
     acceleration = np.gradient(derivative)
-    
-    # Visualize derivatives for debugging
-    plt.figure(figsize=(15, 10))
-    
-    plt.subplot(3, 1, 1)
-    plt.plot(trace, label='Original Trace')
-    plt.title(f'Original {trace_name} Trace')
-    plt.grid(True)
-    plt.legend()
-    
-    plt.subplot(3, 1, 2)
-    plt.plot(derivative, label='First Derivative')
-    plt.title('First Derivative (Slope)')
-    plt.grid(True)
-    plt.legend()
-    
-    plt.subplot(3, 1, 3)
-    plt.plot(acceleration, label='Second Derivative')
-    plt.title('Second Derivative (Acceleration)')
-    plt.grid(True)
-    plt.legend()
-    
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_folder, f"derivatives_{trace_name}.png"))
-    plt.close()
     
     # Calculate adaptive threshold for slope detection
     slope_threshold = np.percentile(np.abs(derivative), 90) * 0.2
@@ -480,30 +386,6 @@ def detect_upstroke_initiations(trace, trace_name="trace", min_distance=100):
     print(f"Detected {len(ecg_initiations)} ECG upstroke initiations")
     print(f"Detected {len(doppler_initiations)} Doppler upstroke initiations")
     
-    # Save the raw traces with upstroke initiations
-    plt.figure(figsize=(15, 8))
-    plt.subplot(2, 1, 1)
-    plt.plot(ecg_trace, 'g-', label='ECG Trace')
-    plt.scatter(ecg_initiations, [ecg_trace[i] for i in ecg_initiations], 
-                color='red', marker='o', s=80, label='Upstroke Initiations')
-    plt.axhline(y=0, color='r', linestyle='--', label='Baseline')
-    plt.title('ECG Trace with Upstroke Initiations')
-    plt.grid(True)
-    plt.legend()
-    
-    plt.subplot(2, 1, 2)
-    plt.plot(doppler_trace, 'b-', label='Doppler Trace')
-    plt.scatter(doppler_initiations, [doppler_trace[i] for i in doppler_initiations], 
-                color='red', marker='o', s=80, label='Upstroke Initiations')
-    plt.axhline(y=0, color='r', linestyle='--', label='Baseline')
-    plt.title('Doppler Trace with Upstroke Initiations')
-    plt.grid(True)
-    plt.legend()
-    
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_folder, "traces_with_initiations.png"))
-    plt.close()
-    
     # Match ECG with subsequent Doppler initiations
     matched_pairs = []
     time_differences_ms = []
@@ -521,109 +403,7 @@ def detect_upstroke_initiations(trace, trace_name="trace", min_distance=100):
             if 10 <= time_diff_ms <= 300:  # 10ms to 300ms is reasonable
                 matched_pairs.append((ecg_idx, doppler_idx))
                 time_differences_ms.append(time_diff_ms)
-    
-    # Create visualization for final results
-    plt.figure(figsize=(15, 12))
-    
-    # Plot original image
-    plt.subplot(3, 1, 1)
-    plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-    plt.title('Original Ultrasound Image')
-    
-    # Plot ECG trace with matched initiations
-    plt.subplot(3, 1, 2)
-    plt.plot(ecg_trace, 'g-', label='ECG Trace')
-    plt.scatter(ecg_initiations, [ecg_trace[i] for i in ecg_initiations], 
-                color='red', marker='o', s=60, label='All Upstrokes')
-    matched_ecg = [p[0] for p in matched_pairs]
-    if matched_ecg:
-        plt.scatter(matched_ecg, [ecg_trace[p] for p in matched_ecg], 
-                    color='black', marker='X', s=100, label='Matched Points')
-        for i, ecg_idx in enumerate(matched_ecg):
-            plt.annotate(f"{i+1}", 
-                        xy=(ecg_idx, ecg_trace[ecg_idx]),
-                        xytext=(0, -20), textcoords='offset points',
-                        fontsize=10, ha='center')
-    plt.axhline(y=0, color='r', linestyle='--', label='Baseline')
-    plt.title('ECG Trace with Upstroke Initiations')
-    plt.grid(True)
-    plt.legend()
-    
-    # Plot Doppler trace with matched initiations
-    plt.subplot(3, 1, 3)
-    plt.plot(doppler_trace, 'b-', label='Doppler Trace')
-    plt.scatter(doppler_initiations, [doppler_trace[i] for i in doppler_initiations], 
-                color='red', marker='o', s=60, label='All Upstrokes')
-    matched_doppler = [p[1] for p in matched_pairs]
-    if matched_doppler:
-        plt.scatter(matched_doppler, [doppler_trace[p] for p in matched_doppler], 
-                    color='black', marker='X', s=100, label='Matched Points')
-        for i, (ecg_idx, doppler_idx) in enumerate(matched_pairs):
-            plt.annotate(f"{i+1}", 
-                        xy=(doppler_idx, doppler_trace[doppler_idx]),
-                        xytext=(0, -20), textcoords='offset points',
-                        fontsize=10, ha='center')
-            plt.annotate(f"{time_differences_ms[i]:.1f} ms", 
-                        xy=(doppler_idx, doppler_trace[doppler_idx]),
-                        xytext=(0, 30), textcoords='offset points',
-                        fontsize=10, ha='center',
-                        arrowprops=dict(arrowstyle="->", color='black'))
-    plt.axhline(y=0, color='r', linestyle='--', label='Baseline')
-    plt.title('Doppler Trace with Upstroke Initiations')
-    plt.grid(True)
-    plt.legend()
-    
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_folder, "time_difference_analysis.png"))
-    plt.close()
-    output_path = os.path.join(output_folder, "time_difference_analysis.png")
-    
-    # Create detailed report
-    report_path = os.path.join(output_folder, 'time_difference_report.txt')
-    with open(report_path, 'w') as f:
-        f.write("Time Difference Measurements - Enhanced Processing\n")
-        f.write("=================================================\n\n")
-        f.write(f"Image analyzed: {os.path.basename(image_path)}\n")
-        f.write(f"Time calibration: {seconds_per_pixel:.6f} seconds per pixel\n\n")
-        f.write("Individual Cardiac Cycle Measurements:\n")
-        f.write("------------------------------------\n")
-        for i, ((ecg_idx, doppler_idx), time_diff_ms) in enumerate(zip(matched_pairs, time_differences_ms)):
-            f.write(f"Cardiac Cycle {i+1}:\n")
-            f.write(f"  ECG upstroke initiation: Pixel {ecg_idx}\n")
-            f.write(f"  Doppler upstroke initiation: Pixel {doppler_idx}\n")
-            f.write(f"  Time difference: {time_diff_ms:.1f} ms\n\n")
-        f.write("\nSummary Statistics:\n")
-        f.write("------------------\n")
-        f.write(f"Number of cardiac cycles analyzed: {len(time_differences_ms)}\n")
-        f.write(f"Average time difference: {np.mean(time_differences_ms):.1f} ms\n")
-        if len(time_differences_ms) > 1:
-            f.write(f"Standard deviation: {np.std(time_differences_ms):.1f} ms\n")
-            f.write(f"Min time difference: {min(time_differences_ms):.1f} ms\n")
-            f.write(f"Max time difference: {max(time_differences_ms):.1f} ms\n")
-    
-    # Create CSV report for numerical analysis
-    csv_path = os.path.join(output_folder, 'time_difference_measurements.csv')
-    with open(csv_path, 'w') as f:
-        f.write("Cycle,ECG_Point,Doppler_Point,Time_Difference_ms\n")
-        for i, ((ecg_idx, doppler_idx), time_diff_ms) in enumerate(zip(matched_pairs, time_differences_ms)):
-            f.write(f"{i+1},{ecg_idx},{doppler_idx},{time_diff_ms:.1f}\n")
-    
-    # Print results to console
-    print("\nTime Difference Measurements - Enhanced Processing:")
-    print("=================================================")
-    for i, time_diff_ms in enumerate(time_differences_ms):
-        print(f"Cardiac Cycle {i+1}:")
-        print(f"  Time between upstroke initiations: {time_diff_ms:.1f} ms")
-    
-    print(f"\nNumber of cardiac cycles analyzed: {len(time_differences_ms)}")
-    print(f"Average time difference: {np.mean(time_differences_ms):.1f} ms")
-    if len(time_differences_ms) > 1:
-        print(f"Standard deviation: {np.std(time_differences_ms):.1f} ms")
-    
-    print(f"\nResults saved to:")
-    print(f"  - Report: {report_path}")
-    print(f"  - CSV data: {csv_path}")
-    print(f"  - Visualization: {output_path}")
+
     
     return {
         'time_differences_ms': time_differences_ms,
