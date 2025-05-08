@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
+from pwv_multiframe import load_image_stack
 
 from pwv_multiframe import load_dicom_series
 import pwv_visual_analysis
@@ -162,8 +163,8 @@ with tab_analysis:
         open(ppath, 'wb').write(prox_file.read())
         open(dpath, 'wb').write(dist_file.read())
 
-        prox_stack = load_dicom_series(ppath)
-        dist_stack = load_dicom_series(dpath)
+        prox_stack = load_image_stack(ppath)
+        dist_stack = load_image_stack(dpath)
         max_frames = min(len(prox_stack), len(dist_stack))
         frames_to_process = st.number_input(
             "Frames to process",
