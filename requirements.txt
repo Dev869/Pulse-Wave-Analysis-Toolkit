@@ -4,11 +4,7 @@ Pillow
 numpy
 pandas
 matplotlib
-pwv-multiframe
-pwv-enhanced-fixed
-opencv-python
 pydicom
 scipy
-subprocess
 Image
 ImageTK
