@@ -152,7 +152,11 @@ with tab_analysis:
     st.title("Upload & Frame Selection")
 
     prox_file = st.file_uploader("Proximal DICOM", type=["dcm"])
+    if prox_file:
+        st.session_state["prox_basename"] = os.path.splitext(prox_file.name)[0]
     dist_file = st.file_uploader("Distal DICOM",   type=["dcm"])
+    if dist_file:
+        st.session_state["dist_basename"] = os.path.splitext(dist_file.name)[0]
 
     if prox_file and dist_file:
         tmpd = tempfile.mkdtemp()
@@ -213,11 +217,20 @@ st.write("")  # spacing
 # ────────────────────────────────────────────────────────────────────────────
 
 if st.button("Analyze"):
+    total = frames_to_process
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+
+
     # run analysis and stash into session_state
     prox_records, dist_records = [], []
     frame_images_prox, frame_images_dist = [], []
 
     for i in range(frames_to_process):
+        # update progress bar
+        remaining = total - (i + 1)
+        status_text.text(f"Processing frame {i+1} of {total} ({remaining} remaining)")
+        progress_bar.progress((i + 1) / total)
         # --- proximal ---
         img_p = prox_stack[i]
         em_p, dr_p, _ = create_masks(img_p)
@@ -322,6 +335,10 @@ if st.button("Analyze"):
         fig2.savefig(fd); plt.close(fig2)
         frame_images_dist.append(fd)
 
+    # Update progress bar
+    status_text.text("All frames processed.")
+    progress_bar.empty()
+   
     # Build DataFrames
     df_prox = pd.DataFrame(prox_records)
     df_dist = pd.DataFrame(dist_records)
@@ -362,6 +379,8 @@ if st.button("Analyze"):
 with tab_results:
     st.title("Results & Downloads")
     if 'df_prox_filt' in st.session_state:
+        base_p = st.session_state.get("prox_basename", "prox")
+        base_d = st.session_state.get("dist_basename", "dist")
         df_p = st.session_state['df_prox_filt']
         df_d = st.session_state['df_dist_filt']
         summ = st.session_state['summary']
@@ -381,8 +400,8 @@ with tab_results:
         # Downloads
         csv_p = df_p.to_csv(index=False)
         csv_d = df_d.to_csv(index=False)
-        st.download_button("Download Proximal CSV", csv_p, file_name="prox_cycles.csv", mime="text/csv")
-        st.download_button("Download Distal CSV",   csv_d, file_name="dist_cycles.csv", mime="text/csv")
+        st.download_button("Download Proximal CSV", csv_p, file_name=f"{base_p}_prox_cycles.csv", mime="text/csv")
+        st.download_button("Download Distal CSV",   csv_d, file_name=f"{base_d}_dist_cycles.csv", mime="text/csv")
 
         results_txt = (
             f"Avg Prox TT: {summ['avg_prox']:.1f} ms\n"
