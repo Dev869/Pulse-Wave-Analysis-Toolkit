@@ -217,7 +217,15 @@ if st.button("Analyze"):
     prox_records, dist_records = [], []
     frame_images_prox, frame_images_dist = [], []
 
+    processed_frames = set()  # To track processed frames
+
     for i in range(frames_to_process):
+        if i in processed_frames:
+            print(f"Frame {i+1} is being processed multiple times. Skipping.")
+            continue  # Skip if frame is already processed
+
+        processed_frames.add(i)  # Mark frame as processed
+
         # --- proximal ---
         img_p = prox_stack[i]
         em_p, dr_p, _ = create_masks(img_p)
@@ -228,47 +236,28 @@ if st.button("Analyze"):
         peaks_e, bases_e = find_peaks_and_bases(
             ecg_p, st.session_state.ec_peak_frac
         )
-        valid_e = [
-            (p,b) for p,b in zip(peaks_e,bases_e)
-            if (ecg_p[p]-ecg_p[b]) >=
-                st.session_state.ec_diff_frac * np.nanmax(ecg_p)
-        ]
-
         baseline_d = np.percentile(dop_p, 70)
         peaks_d, bases_d = find_peaks_and_bases(
             dop_p, st.session_state.dp_peak_frac
         )
+
+        valid_e = [
+            (p, b) for p, b in zip(peaks_e, bases_e)
+            if (ecg_p[p] - ecg_p[b]) >= st.session_state.ec_diff_frac * np.nanmax(ecg_p)
+        ]
+
         valid_d = [
-            (p,b) for p,b in zip(peaks_d,bases_d)
-            if (
-                dop_p[b] <= baseline_d and
-                (dop_p[p]-dop_p[b]) >=
-                st.session_state.dp_diff_frac * np.nanmax(dop_p)
-            )
+            (p, b) for p, b in zip(peaks_d, bases_d)
+            if (dop_p[b] <= baseline_d) and
+            (dop_p[p] - dop_p[b]) >= st.session_state.dp_diff_frac * np.nanmax(dop_p)
         ]
 
         for _, b in valid_e:
             next_bs = [bd for _, bd in valid_d if bd > b]
             if next_bs:
-                tt = abs((min(next_bs)-b) * sec_per_pix * 1000)
-                if (
-                    st.session_state.tt_min_ms <= tt <=
-                    st.session_state.tt_max_ms
-                ):
+                tt = abs((min(next_bs) - b) * sec_per_pix * 1000)
+                if st.session_state.tt_min_ms <= tt <= st.session_state.tt_max_ms:
                     prox_records.append({'frame': i+1, 'TT_ms': tt})
-
-        # save image
-        fig, axs = plt.subplots(2,1,figsize=(6,4))
-        axs[0].plot(ecg_p)
-        axs[0].scatter([b for _,b in valid_e], [ecg_p[b] for _,b in valid_e], c='r')
-        axs[0].set_title(f'Prox Frame {i+1}')
-        axs[1].plot(dop_p)
-        axs[1].scatter([b for _,b in valid_d], [dop_p[b] for _,b in valid_d], c='r')
-        axs[1].axhline(baseline_d, color='k', linestyle='--')
-        plt.tight_layout()
-        fp = os.path.join(tmpd, f'prox_{i+1}.png')
-        fig.savefig(fp); plt.close(fig)
-        frame_images_prox.append(fp)
 
         # --- distal (same logic) ---
         img_d = dist_stack[i]
@@ -280,70 +269,42 @@ if st.button("Analyze"):
         peaks_e2, bases_e2 = find_peaks_and_bases(
             ecg_d, st.session_state.ec_peak_frac
         )
-        valid_e2 = [
-            (p,b) for p,b in zip(peaks_e2,bases_e2)
-            if (ecg_d[p]-ecg_d[b]) >=
-                st.session_state.ec_diff_frac * np.nanmax(ecg_d)
-        ]
-
         baseline_d2 = np.percentile(dop_d, 70)
         peaks_d2, bases_d2 = find_peaks_and_bases(
             dop_d, st.session_state.dp_peak_frac
         )
+
+        valid_e2 = [
+            (p, b) for p, b in zip(peaks_e2, bases_e2)
+            if (ecg_d[p] - ecg_d[b]) >= st.session_state.ec_diff_frac * np.nanmax(ecg_d)
+        ]
+
         valid_d2 = [
-            (p,b) for p,b in zip(peaks_d2,bases_d2)
-            if (
-                dop_d[b] <= baseline_d2 and
-                (dop_d[p]-dop_d[b]) >=
-                st.session_state.dp_diff_frac * np.nanmax(dop_d)
-            )
+            (p, b) for p, b in zip(peaks_d2, bases_d2)
+            if (dop_d[b] <= baseline_d2) and
+            (dop_d[p] - dop_d[b]) >= st.session_state.dp_diff_frac * np.nanmax(dop_d)
         ]
 
         for _, b in valid_e2:
-            next_bs2 = [bd for _,bd in valid_d2 if bd > b]
+            next_bs2 = [bd for _, bd in valid_d2 if bd > b]
             if next_bs2:
-                tt2 = abs((min(next_bs2)-b) * sec_per_pix * 1000)
-                if (
-                    st.session_state.tt_min_ms <= tt2 <=
-                    st.session_state.tt_max_ms
-                ):
+                tt2 = abs((min(next_bs2) - b) * sec_per_pix * 1000)
+                if st.session_state.tt_min_ms <= tt2 <= st.session_state.tt_max_ms:
                     dist_records.append({'frame': i+1, 'TT_ms': tt2})
-
-        # save image
-        fig2, axs2 = plt.subplots(2,1,figsize=(6,4))
-        axs2[0].plot(ecg_d)
-        axs2[0].scatter([b for _,b in valid_e2], [ecg_d[b] for _,b in valid_e2], c='r')
-        axs2[0].set_title(f'Dist Frame {i+1}')
-        axs2[1].plot(dop_d)
-        axs2[1].scatter([b for _,b in valid_d2], [dop_d[b] for _,b in valid_d2], c='r')
-        axs2[1].axhline(baseline_d2, color='k', linestyle='--')
-        plt.tight_layout()
-        fd = os.path.join(tmpd, f'dist_{i+1}.png')
-        fig2.savefig(fd); plt.close(fig2)
-        frame_images_dist.append(fd)
 
     # Build DataFrames
     df_prox = pd.DataFrame(prox_records)
     df_dist = pd.DataFrame(dist_records)
 
-    # Exclusion lists
-    st.session_state['df_prox_filt'] = df_prox[~df_prox['frame'].isin(
-        st.multiselect("Exclude Proximal frames", df_prox['frame'].unique())
-    )]
-    st.session_state['df_dist_filt'] = df_dist[~df_dist['frame'].isin(
-        st.multiselect("Exclude Distal frames", df_dist['frame'].unique())
-    )]
+    st.session_state['df_prox_filt'] = df_prox
+    st.session_state['df_dist_filt'] = df_dist
 
     # Summary
     avg_p = st.session_state['df_prox_filt']['TT_ms'].mean()
     avg_d = st.session_state['df_dist_filt']['TT_ms'].mean()
     dt = abs(avg_d - avg_p)
-    dist_mm = st.session_state.get(
-        "probe_distance_mm",
-        1.0/ st.session_state.pix_per_mm
-    )
-
-    pwv = dist_mm / (dt/1000) if dt > 0 else np.nan
+    dist_mm = st.session_state.get("probe_distance_mm", 1.0 / st.session_state.pix_per_mm)
+    pwv = dist_mm / (dt / 1000) if dt > 0 else np.nan
 
     st.session_state['summary'] = {
         'avg_prox': avg_p,
@@ -351,10 +312,6 @@ if st.button("Analyze"):
         'dt': dt,
         'pwv': pwv
     }
-
-    # Store images
-    st.session_state['images_prox'] = frame_images_prox
-    st.session_state['images_dist'] = frame_images_dist
 
     st.success("Analysis complete! Switch to the Results tab.")
 
