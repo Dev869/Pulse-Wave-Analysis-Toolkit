@@ -209,111 +209,89 @@ with tab_analysis:
         else:
             st.error(f"Distance tool failed:\n{proc.stderr}")
 
-st.write("")  # spacing
-# ────────────────────────────────────────────────────────────────────────────
-
-if st.button("Analyze"):
-    # run analysis and stash into session_state
-    prox_records, dist_records = [], []
-    frame_images_prox, frame_images_dist = [], []
-
-    processed_frames = set()  # To track processed frames
-
-    for i in range(frames_to_process):
-        if i in processed_frames:
-            print(f"Frame {i+1} is being processed multiple times. Skipping.")
-            continue  # Skip if frame is already processed
-
-        processed_frames.add(i)  # Mark frame as processed
-
-        # --- proximal ---
-        img_p = prox_stack[i]
-        em_p, dr_p, _ = create_masks(img_p)
-        ecg_p = extract_ecg_trace(em_p, em_p.shape[1])
-        dm_p, ed_p, gr_p = enhance_doppler_region(dr_p)
-        dop_p = extract_doppler_trace(dm_p, ed_p, gr_p, gr_p.shape[1])
-
-        peaks_e, bases_e = find_peaks_and_bases(
-            ecg_p, st.session_state.ec_peak_frac
-        )
-        baseline_d = np.percentile(dop_p, 70)
-        peaks_d, bases_d = find_peaks_and_bases(
-            dop_p, st.session_state.dp_peak_frac
-        )
-
-        valid_e = [
-            (p, b) for p, b in zip(peaks_e, bases_e)
-            if (ecg_p[p] - ecg_p[b]) >= st.session_state.ec_diff_frac * np.nanmax(ecg_p)
-        ]
-
-        valid_d = [
-            (p, b) for p, b in zip(peaks_d, bases_d)
-            if (dop_p[b] <= baseline_d) and
-            (dop_p[p] - dop_p[b]) >= st.session_state.dp_diff_frac * np.nanmax(dop_p)
-        ]
-
-        for _, b in valid_e:
-            next_bs = [bd for _, bd in valid_d if bd > b]
-            if next_bs:
-                tt = abs((min(next_bs) - b) * sec_per_pix * 1000)
-                if st.session_state.tt_min_ms <= tt <= st.session_state.tt_max_ms:
-                    prox_records.append({'frame': i+1, 'TT_ms': tt})
-
-        # --- distal (same logic) ---
-        img_d = dist_stack[i]
-        em_d, dr_d, _ = create_masks(img_d)
-        ecg_d = extract_ecg_trace(em_d, em_d.shape[1])
-        dm_d, ed_d, gr_d = enhance_doppler_region(dr_d)
-        dop_d = extract_doppler_trace(dm_d, ed_d, gr_d, gr_d.shape[1])
-
-        peaks_e2, bases_e2 = find_peaks_and_bases(
-            ecg_d, st.session_state.ec_peak_frac
-        )
-        baseline_d2 = np.percentile(dop_d, 70)
-        peaks_d2, bases_d2 = find_peaks_and_bases(
-            dop_d, st.session_state.dp_peak_frac
-        )
-
-        valid_e2 = [
-            (p, b) for p, b in zip(peaks_e2, bases_e2)
-            if (ecg_d[p] - ecg_d[b]) >= st.session_state.ec_diff_frac * np.nanmax(ecg_d)
-        ]
-
-        valid_d2 = [
-            (p, b) for p, b in zip(peaks_d2, bases_d2)
-            if (dop_d[b] <= baseline_d2) and
-            (dop_d[p] - dop_d[b]) >= st.session_state.dp_diff_frac * np.nanmax(dop_d)
-        ]
-
-        for _, b in valid_e2:
-            next_bs2 = [bd for _, bd in valid_d2 if bd > b]
-            if next_bs2:
-                tt2 = abs((min(next_bs2) - b) * sec_per_pix * 1000)
-                if st.session_state.tt_min_ms <= tt2 <= st.session_state.tt_max_ms:
-                    dist_records.append({'frame': i+1, 'TT_ms': tt2})
-
-    # Build DataFrames
-    df_prox = pd.DataFrame(prox_records)
-    df_dist = pd.DataFrame(dist_records)
-
-    st.session_state['df_prox_filt'] = df_prox
-    st.session_state['df_dist_filt'] = df_dist
-
-    # Summary
-    avg_p = st.session_state['df_prox_filt']['TT_ms'].mean()
-    avg_d = st.session_state['df_dist_filt']['TT_ms'].mean()
-    dt = abs(avg_d - avg_p)
-    dist_mm = st.session_state.get("probe_distance_mm", 1.0 / st.session_state.pix_per_mm)
-    pwv = dist_mm / (dt / 1000) if dt > 0 else np.nan
-
-    st.session_state['summary'] = {
-        'avg_prox': avg_p,
-        'avg_dist': avg_d,
-        'dt': dt,
-        'pwv': pwv
-    }
-
-    st.success("Analysis complete! Switch to the Results tab.")
+        if st.button("Analyze"):
+            total = frames_to_process
+            status = st.empty()
+            pbar   = st.progress(0.0)
+            # capture settings
+            ec_pf,dp_pf,ec_df,dp_df = (
+                st.session_state.ec_peak_frac,
+                st.session_state.dp_peak_frac,
+                st.session_state.ec_diff_frac,
+                st.session_state.dp_diff_frac
+            )
+            tt_min,tt_max,secpp = (
+                st.session_state.tt_min_ms,
+                st.session_state.tt_max_ms,
+                st.session_state.time_seconds/st.session_state.time_pixels
+            )
+            prox_records,dist_records = [],[]
+            def process_one(i):
+                # proximal
+                img = prox_stack[i]
+                em,dr,_ = create_masks(img)
+                ecg = extract_ecg_trace(em,em.shape[1])
+                dm,ed,gr = enhance_doppler_region(dr)
+                dop = extract_doppler_trace(dm,ed,gr,gr.shape[1])
+                recp=[]
+                pe,pb = find_peaks_and_bases(ecg,ec_pf)
+                valid_e=[(p,b) for p,b in zip(pe,pb) if (ecg[p]-ecg[b])>=ec_df*np.nanmax(ecg)]
+                bd = np.percentile(dop,70)
+                pd,bd2 = find_peaks_and_bases(dop,dp_pf)
+                valid_d=[(p,b) for p,b in zip(pd,bd2) if dop[b]<=bd and (dop[p]-dop[b])>=dp_df*np.nanmax(dop)]
+                for _,b in valid_e:
+                    nxt=[bd_ for _,bd_ in valid_d if bd_>b]
+                    if nxt:
+                        tt=abs((min(nxt)-b)*secpp*1000)
+                        if tt_min<=tt<=tt_max:
+                            recp.append({'frame':i+1,'TT_ms':tt})
+                # distal
+                img = dist_stack[i]
+                em,dr,_ = create_masks(img)
+                ecg = extract_ecg_trace(em,em.shape[1])
+                dm,ed,gr = enhance_doppler_region(dr)
+                dop = extract_doppler_trace(dm,ed,gr,gr.shape[1])
+                recd=[]
+                pe,pb = find_peaks_and_bases(ecg,ec_pf)
+                valid_e=[(p,b) for p,b in zip(pe,pb) if (ecg[p]-ecg[b])>=ec_df*np.nanmax(ecg)]
+                bd = np.percentile(dop,70)
+                pd,bd2 = find_peaks_and_bases(dop,dp_pf)
+                valid_d=[(p,b) for p,b in zip(pd,bd2) if dop[b]<=bd and (dop[p]-dop[b])>=dp_df*np.nanmax(dop)]
+                for _,b in valid_e:
+                    nxt=[bd_ for _,bd_ in valid_d if bd_>b]
+                    if nxt:
+                        tt=abs((min(nxt)-b)*secpp*1000)
+                        if tt_min<=tt<=tt_max:
+                            recd.append({'frame':i+1,'TT_ms':tt})
+                return recp,recd
+            # thread pool
+            completed=0
+            with ThreadPoolExecutor() as exe:
+                futs=[exe.submit(process_one,i) for i in range(total)]
+                for fut in as_completed(futs):
+                    rp,rd = fut.result()
+                    prox_records.extend(rp)
+                    dist_records.extend(rd)
+                    completed+=1
+                    status.text(f"Frames remaining: {total-completed} of {total}")
+                    pbar.progress(completed/total)
+            status.text("Analysis complete!")
+            pbar.empty()
+            # DataFrames & exclusions
+            dfp=pd.DataFrame(prox_records)
+            dfd=pd.DataFrame(dist_records)
+            st.session_state['df_prox_filt']=dfp[~dfp['frame'].isin(st.multiselect("Exclude Prox frames",dfp['frame'].unique()))]
+            st.session_state['df_dist_filt']=dfd[~dfd['frame'].isin(st.multiselect("Exclude Dist frames",dfd['frame'].unique()))]
+            # summary
+            ap=st.session_state['df_prox_filt']['TT_ms'].mean()
+            ad=st.session_state['df_dist_filt']['TT_ms'].mean()
+            dt=abs(ad-ap)
+            dcm=st.session_state.get("probe_distance_mm",1.0/st.session_state.pix_per_mm) / 10.0
+            pwv=dcm/(dt/1000) if dt>0 else np.nan
+            st.session_state['summary']={'avg_prox':ap,'avg_dist':ad,'dt':dt,'pwv':pwv}
+            st.session_state['images_prox']=None
+            st.session_state['images_dist']=None
+            st.success("Done! Switch to Results tab.")
 
 # === RESULTS TAB =============================================================
 with tab_results:
@@ -358,4 +336,4 @@ with tab_results:
             st.image(st.session_state['images_dist'], width=300)
 
     else:
-        st.info("Run your analysis in the Upload & Calibrate tab first.")
+        st.info("Run analysis first in the Upload & Calibrate tab.")
