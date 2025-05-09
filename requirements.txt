@@ -3,6 +3,7 @@ streamlit-drawable-canvas
 Pillow
 numpy
 pandas
+numba
 matplotlib
 pydicom
 scipy
