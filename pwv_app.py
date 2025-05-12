@@ -403,6 +403,7 @@ with tab_analysis:
 with tab_results:
     st.title("Results & Downloads")
     if 'dfp_raw' in st.session_state and 'dfd_raw' in st.session_state:
+        # Load DataFrames from session state
         base_p = st.session_state.get("prox_basename", "prox")
         base_d = st.session_state.get("dist_basename", "dist")
         df_p = st.session_state['dfp_raw']
@@ -415,61 +416,49 @@ with tab_results:
         st.subheader("Distal Transit Times")
         st.dataframe(df_d)
 
-        dmm    = st.session_state.get("probe_distance_mm", 1.0 / st.session_state.pix_per_mm)
+        dmm = st.session_state.get("probe_distance_mm", 1.0 / st.session_state.pix_per_mm)
 
-        # 1) Merge per-cycle tables
-        merged = pd.merge(
-            df_p.rename(columns={'TT_ms': f'TT_ms_prox ({base_p})'}),
-            df_d.rename(columns={'TT_ms': f'TT_ms_dist ({base_d})'}),
-            on='frame', how='outer'
-        ).sort_values('frame')
+        # Calculate Average Transit Times
+        avg_prox_tt = df_p['TT_ms'].mean()
+        avg_dist_tt = df_d['TT_ms'].mean()
 
-        st.subheader("Per-Cycle Transit Times")
-        st.dataframe(merged, use_container_width=True)
+        # Calculate the difference between averages
+        tt_difference = avg_prox_tt - avg_dist_tt
 
-        # 2) Display simple summary
-
+        st.subheader("Average Transit Times")
         st.write(f"**Measured Distance:** {dmm:.2f} mm")
-        st.write(f"**Avg Prox TT ({base_p}):** {summ['avg_prox']:.1f} ms")
-        st.write(f"**Avg Dist TT ({base_d}):** {summ['avg_dist']:.1f} ms")
-        st.write(f"**ΔTT:** {summ['dt']:.1f} ms")
-        st.write(f"**PWV:** {summ['pwv']:.1f} cm/s")
+        st.write(f"**Avg Prox TT ({base_p}):** {avg_prox_tt:.1f} ms")
+        st.write(f"**Avg Dist TT ({base_d}):** {avg_dist_tt:.1f} ms")
+        st.write(f"**ΔTT:** {tt_difference:.1f} ms")
 
-        # Downloads
-        # 3) Build full results table with summary row at top
-        # Define the extra summary columns
-        summary_cols = [
-            f"Avg TT Proximal ({base_p}) (ms)",
-            f"Avg TT Distal ({base_d}) (ms)",
-            "TT Diff (ms)",
-            "Measured Distance (mm)",
-            "PWV (cm/s)",
-        ]
-        # Full column order = merged.columns + summary_cols
-        full_cols = list(merged.columns) + summary_cols
+        # Calculate PWV
+        pwv = dmm / (abs(tt_difference) / 1000) / 10 if abs(tt_difference) > 0 else float('nan')
+        st.write(f"**PWV:** {pwv:.1f} cm/s")
 
-        # Build the single‐row summary DataFrame
-        summary_data = {c: '' for c in merged.columns}
-        summary_data.update({
-            summary_cols[0]: summ['avg_prox'],
-            summary_cols[1]: summ['avg_dist'],
-            summary_cols[2]: summ['dt'],
-            summary_cols[3]: dmm,
-            summary_cols[4]: summ['pwv'],
+        # Prepare Full Results Table
+        full_results = pd.DataFrame({
+            'Frame Prox': df_p['frame'],
+            'TT Prox (ms)': df_p['TT_ms'],
+            'Frame Dist': df_d['frame'],
+            'TT Dist (ms)': df_d['TT_ms']
         })
-        summary_df = pd.DataFrame([summary_data], columns=full_cols)
 
-        # Pad the per-cycle rows with empty summary columns
-        cycles_df = merged.assign(**{c: '' for c in summary_cols})[full_cols]
+        # Append Summary Row at Top
+        summary_data = pd.DataFrame({
+            'Frame Prox': [''], 'TT Prox (ms)': [avg_prox_tt],
+            'Frame Dist': [''], 'TT Dist (ms)': [avg_dist_tt],
+            'TT Diff (ms)': [tt_difference],
+            'Measured Distance (mm)': [dmm],
+            'PWV (cm/s)': [pwv]
+        })
 
-        # Concatenate summary at top
-        full = pd.concat([summary_df, cycles_df], ignore_index=True)
+        full_results = pd.concat([summary_data, full_results], ignore_index=True)
 
         st.subheader("Full Results Table")
-        st.dataframe(full, use_container_width=True)
+        st.dataframe(full_results, use_container_width=True)
 
-        # 4) Download
-        csv = full.to_csv(index=False)
+        # Download Full Results
+        csv = full_results.to_csv(index=False)
         st.download_button(
             "Download Full Results CSV",
             csv,
@@ -484,6 +473,7 @@ with tab_results:
             st.image(st.session_state['images_prox'], width=300)
         with col2:
             st.image(st.session_state['images_dist'], width=300)
+
 
     else:
         st.info("Run your analysis in the Upload & Calibrate tab first.")
