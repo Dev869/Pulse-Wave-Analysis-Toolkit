@@ -343,6 +343,22 @@ if st.button("Analyze"):
     df_prox = pd.DataFrame(prox_records)
     df_dist = pd.DataFrame(dist_records)
 
+    # Build Results
+
+    st.session_state['dfp_raw']     = dfp.copy()
+    st.session_state['dfd_raw']     = dfd.copy()
+    # give each widget a unique key and capture selections
+    exclude_prox = st.multiselect(
+        "Exclude Prox frames", 
+        options=dfp['frame'].unique(), 
+        key="exclude_prox"
+    )
+    exclude_dist = st.multiselect(
+        "Exclude Dist frames", 
+        options=dfd['frame'].unique(), 
+        key="exclude_dist"
+    )
+
     # Exclusion lists
     st.session_state['df_prox_filt'] = df_prox[~df_prox['frame'].isin(
         st.multiselect("Exclude Proximal frames", df_prox['frame'].unique())
@@ -378,11 +394,11 @@ if st.button("Analyze"):
 # === RESULTS TAB =============================================================
 with tab_results:
     st.title("Results & Downloads")
-    if 'df_prox_filt' in st.session_state:
+    if 'dfp_raw' in st.session_state and 'dfd_raw' in st.session_state:
         base_p = st.session_state.get("prox_basename", "prox")
         base_d = st.session_state.get("dist_basename", "dist")
-        df_p = st.session_state['df_prox_filt']
-        df_d = st.session_state['df_dist_filt']
+        df_p = st.session_state['dfp_raw']
+        df_d = st.session_state['dfd_raw']
         summ = st.session_state['summary']
 
         st.subheader("Proximal Transit Times")
@@ -391,25 +407,67 @@ with tab_results:
         st.subheader("Distal Transit Times")
         st.dataframe(df_d)
 
-        st.subheader("Summary")
-        st.write(f"Avg Prox TT: {summ['avg_prox']:.1f} ms")
-        st.write(f"Avg Dist TT: {summ['avg_dist']:.1f} ms")
-        st.write(f"ΔTT: {summ['dt']:.1f} ms")
-        st.write(f"PWV: {summ['pwv']:.1f} mm/s")
+        dmm    = st.session_state.get("probe_distance_mm", 1.0 / st.session_state.pix_per_mm)
+
+        # 1) Merge per-cycle tables
+        merged = pd.merge(
+            dfp.rename(columns={'TT_ms': f'TT_ms_prox ({base_p})'}),
+            dfd.rename(columns={'TT_ms': f'TT_ms_dist ({base_d})'}),
+            on='frame', how='outer'
+        ).sort_values('frame')
+
+        st.subheader("Per-Cycle Transit Times")
+        st.dataframe(merged, use_container_width=True)
+
+        # 2) Display simple summary
+
+        st.write(f"**Measured Distance:** {dmm:.2f} mm")
+        st.write(f"**Avg Prox TT ({base_p}):** {summ['avg_prox']:.1f} ms")
+        st.write(f"**Avg Dist TT ({base_d}):** {summ['avg_dist']:.1f} ms")
+        st.write(f"**ΔTT:** {summ['dt']:.1f} ms")
+        st.write(f"**PWV:** {summ['pwv']:.1f} cm/s")
 
         # Downloads
-        csv_p = df_p.to_csv(index=False)
-        csv_d = df_d.to_csv(index=False)
-        st.download_button("Download Proximal CSV", csv_p, file_name=f"{base_p}_prox_cycles.csv", mime="text/csv")
-        st.download_button("Download Distal CSV",   csv_d, file_name=f"{base_d}_dist_cycles.csv", mime="text/csv")
+        # 3) Build full results table with summary row at top
+        # Define the extra summary columns
+        summary_cols = [
+            f"Avg TT Proximal ({base_p}) (ms)",
+            f"Avg TT Distal ({base_d}) (ms)",
+            "TT Diff (ms)",
+            "Measured Distance (mm)",
+            "PWV (cm/s)",
+        ]
+        # Full column order = merged.columns + summary_cols
+        full_cols = list(merged.columns) + summary_cols
 
-        results_txt = (
-            f"Avg Prox TT: {summ['avg_prox']:.1f} ms\n"
-            f"Avg Dist TT: {summ['avg_dist']:.1f} ms\n"
-            f"ΔTT: {summ['dt']:.1f} ms\n"
-            f"PWV: {summ['pwv']:.1f} mm/s\n"
+        # Build the single‐row summary DataFrame
+        summary_data = {c: '' for c in merged.columns}
+        summary_data.update({
+            summary_cols[0]: summ['avg_prox'],
+            summary_cols[1]: summ['avg_dist'],
+            summary_cols[2]: summ['dt'],
+            summary_cols[3]: dmm,
+            summary_cols[4]: summ['pwv'],
+        })
+        summary_df = pd.DataFrame([summary_data], columns=full_cols)
+
+        # Pad the per-cycle rows with empty summary columns
+        cycles_df = merged.assign(**{c: '' for c in summary_cols})[full_cols]
+
+        # Concatenate summary at top
+        full = pd.concat([summary_df, cycles_df], ignore_index=True)
+
+        st.subheader("Full Results Table")
+        st.dataframe(full, use_container_width=True)
+
+        # 4) Download
+        csv = full.to_csv(index=False)
+        st.download_buttn(
+            "Download Full Results CSV",
+            csv,
+            file_name=f"{base_p}_{base_d}_full_results.csv",
+            mime="text/csv"
         )
-        st.download_button("Download Results TXT", results_txt, file_name="results.txt", mime="text/plain")
 
         # Per-frame images
         st.subheader("Per-Frame Trace Images")

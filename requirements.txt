@@ -7,4 +7,3 @@ matplotlib
 pydicom
 scipy
 Image
-ImageTK
