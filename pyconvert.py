@@ -25,7 +25,7 @@ def convert_all_avi_to_rgb_dicom():
     for avi_name in avi_files:
         avi_path = os.path.join(folder, avi_name)
         base_name = os.path.splitext(avi_name)[0]
-        save_path = os.path.join(output_dir, f"{base_name}_rgb_multiframe.dcm")
+        save_path = os.path.join(output_dir, f"{base_name}.dcm")
 
         cap = cv2.VideoCapture(avi_path)
         if not cap.isOpened():
