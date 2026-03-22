@@ -28,15 +28,11 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
-import os
 import warnings
 
 # Suppress common warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
-
-# Path to the ultrasound image
-image_path = "/Users/devinwilson/Desktop/ovxset1_pwv_1.png"  # Replace with the actual image path
 
 # Output folder
 output_folder = "ultrasound_results"
@@ -346,77 +342,4 @@ def detect_upstroke_initiations(trace, trace_name="trace", min_distance=100):
             if all(abs(point - p) >= min_distance for p in filtered_points):
                 filtered_points.append(point)
     
-    return sorted(filtered_points)    
-
-    """
-    Measure time difference between ECG and Doppler signals using improved trace extraction.
-    
-    Args:
-        image_path: Path to the ultrasound image
-        
-    Returns:
-        dict: Time difference measurements and analysis results
-    """
-    # Load the image
-    image = cv2.imread(image_path)
-    if image is None:
-        raise ValueError(f"Could not load image from {image_path}")
-    
-        # Get calibration
-    seconds_per_pixel, distance_mm = get_calibration_from_image(image)
-
-    # Create masks and get regions
-    ecg_mask, doppler_region, regions = create_masks(image)
-
-    # Extract ECG trace using the ECG mask’s width
-    ecg_width  = ecg_mask.shape[1]
-    ecg_trace  = extract_ecg_trace(ecg_mask, ecg_width)
-
-    # Apply enhanced processing to Doppler region
-    enhanced_mask, edges, enhanced_gray = enhance_doppler_region(doppler_region)
-
-    # Extract Doppler trace using the enhanced mask’s width
-    doppler_width  = enhanced_mask.shape[1]
-    doppler_width = enhanced_gray.shape[1]
-    doppler_trace = extract_doppler_trace(enhanced_mask, edges, enhanced_gray, doppler_width)
-    # Detect upstroke initiations for both traces
-    ecg_initiations     = detect_upstroke_initiations(ecg_trace,   "ECG")
-    doppler_initiations = detect_upstroke_initiations(doppler_trace, "Doppler")
-    
-    print(f"Detected {len(ecg_initiations)} ECG upstroke initiations")
-    print(f"Detected {len(doppler_initiations)} Doppler upstroke initiations")
-    
-    # Match ECG with subsequent Doppler initiations
-    matched_pairs = []
-    time_differences_ms = []
-    
-    for ecg_idx in ecg_initiations:
-        # Find the nearest Doppler initiation after this ECG initiation
-        next_doppler = [d for d in doppler_initiations if d > ecg_idx]
-        if next_doppler:
-            doppler_idx = min(next_doppler)
-            
-            # Calculate time difference in milliseconds
-            time_diff_ms = (doppler_idx - ecg_idx) * seconds_per_pixel * 1000
-            
-            # Only include physiologically plausible time differences
-            if 10 <= time_diff_ms <= 300:  # 10ms to 300ms is reasonable
-                matched_pairs.append((ecg_idx, doppler_idx))
-                time_differences_ms.append(time_diff_ms)
-
-    
-    return {
-        'time_differences_ms': time_differences_ms,
-        'average_time_diff_ms': np.mean(time_differences_ms) if time_differences_ms else 0,
-        'report_path': report_path,
-        'csv_path': csv_path,
-        'visualization_path': output_path
-    }
-
-def main():
-    root = tk.Tk()
-    app = PWVUI(root)
-    root.mainloop()
-
-if __name__ == "__main__":
-    main()
+    return sorted(filtered_points)

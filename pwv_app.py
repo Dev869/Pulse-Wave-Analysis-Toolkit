@@ -80,7 +80,7 @@ with tab_settings:
         for k, v in profiles[selected].items():
             st.session_state[k] = v
         st.success(f"Loaded '{selected}' settings.")
-        st.experimental_rerun()
+        st.rerun()
 
     new_profile = st.text_input("Save current settings as:")
     if st.button("Save Settings"):

@@ -6,4 +6,4 @@ pandas
 matplotlib
 pydicom
 scipy
-Image
+opencv-python-headless
