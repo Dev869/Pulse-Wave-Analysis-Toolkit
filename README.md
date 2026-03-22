@@ -9,14 +9,14 @@
 
 > If you don’t have Git installed, download it from https://git-scm.com/.
 
-> If you don't have Python 3 istalled, download it from http://python.org/downloads/
+> If you don't have Python 3 installed, download it from http://python.org/downloads/
 
 > If you don't have Homebrew installed, follow the steps at https://brew.sh/
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/Dev869/pulsewave-visual.git
-cd pulsewave-visual
+git clone https://github.com/Dev869/Pulse-Wave-Analysis-Toolkit.git
+cd Pulse-Wave-Analysis-Toolkit
 ```
 
 ### 2. Create & Activate a Python Virtual Environment
@@ -67,8 +67,8 @@ streamlit run pwv_app.py
 
 ### 1. Clone the Repository
 ```powershell
-git clone https://github.com/Dev869/pulsewave-visual.git
-cd pulsewave-visual
+git clone https://github.com/Dev869/Pulse-Wave-Analysis-Toolkit.git
+cd Pulse-Wave-Analysis-Toolkit
 ```
 
 ### 2. Create & Activate a Virtual Environment
@@ -113,8 +113,8 @@ streamlit run pwv_app.py
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/Dev869/pulsewave-visual.git
-cd pulsewave-visual
+git clone https://github.com/Dev869/Pulse-Wave-Analysis-Toolkit.git
+cd Pulse-Wave-Analysis-Toolkit
 ```
 
 ### 2. Create & Activate a Python Virtual Environment
@@ -187,6 +187,43 @@ This will open first the *proximal* image and second the *distal* image where yo
 ### Results
 
 Here, you can see the traces for each frame analzyed as well as the data tables containing the TT (transit times) for both the proximal and distal frames.
+
+---
+
+## Docker Deployment
+
+The app can be containerized and deployed to the cloud.
+
+### Build & Run Locally
+```bash
+docker build -t pwv-analyzer .
+docker run -p 8501:8501 pwv-analyzer
+```
+Then open [http://localhost:8501](http://localhost:8501).
+
+### Deploy to Render (One-Click)
+1. Push this repo to GitHub.
+2. Create a new **Web Service** on [Render](https://render.com) and connect your repo.
+3. Render auto-detects the `Dockerfile` (or use the included `render.yaml` blueprint).
+4. Deploy — the app will be available at your Render URL.
+
+> **Note:** The tkinter distance picker (`distance_tool.py`) requires a display and will not work in headless/cloud environments. Use the **manual distance input** field on the Upload tab instead.
+
+### Other Cloud Platforms
+- **[Railway](https://railway.app)** — Free trial credits, git-push deploys
+- **[Fly.io](https://fly.io)** — Free tier with 3 shared VMs
+
+---
+
+## CLI Mode
+
+You can run the analysis without the Streamlit UI:
+
+```bash
+python pwv_multiframe.py -p proximal.dcm -d distal.dcm -s <distance_mm>
+```
+
+---
 
 ### Acknowledgements
 
