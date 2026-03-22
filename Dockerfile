@@ -1,8 +1,9 @@
 FROM python:3.11-slim
 
-# Install minimal system dependencies for opencv-python-headless
+# Install system dependencies required by opencv-python-headless
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
+    libgl1 \
     libsm6 \
     libxext6 \
     libxrender-dev \
@@ -13,7 +14,9 @@ WORKDIR /app
 
 # Copy requirements first for layer caching
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    python -c "import cv2; print('cv2 version:', cv2.__version__)"
 
 # Copy application code
 COPY . .
