@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: pwv-analyzer
+    runtime: docker
+    repo: https://github.com/Dev869/Pulse-Wave-Analysis-Toolkit
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /_stcore/health
