@@ -209,6 +209,8 @@ Then open [http://localhost:8501](http://localhost:8501).
 
 > **Note:** The tkinter distance picker (`distance_tool.py`) requires a display and will not work in headless/cloud environments. Use the **manual distance input** field on the Upload tab instead.
 
+> **Slow initial load:** Render's free tier spins down after periods of inactivity. The first request after a spin-down triggers a cold start that can take **50 seconds or more** while the container rebuilds. Subsequent requests will load normally.
+
 ### Other Cloud Platforms
 - **[Railway](https://railway.app)** — Free trial credits, git-push deploys
 - **[Fly.io](https://fly.io)** — Free tier with 3 shared VMs
