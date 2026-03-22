@@ -217,6 +217,18 @@ with tab_analysis:
         st.write("")  # spacing
 # ────────────────────────────────────────────────────────────────────────────
 
+    # Manual distance input (fallback for headless/cloud environments)
+    st.markdown("**— or enter distance manually —**")
+    manual_mm = st.number_input(
+        "Probe separation (mm)",
+        min_value=0.0, max_value=100.0,
+        value=st.session_state.get("probe_distance_mm", 0.0),
+        step=0.01,
+        key="manual_distance_mm"
+    )
+    if manual_mm > 0:
+        st.session_state["probe_distance_mm"] = manual_mm
+
     if st.button("Analyze"):
         start_time = time.time()
         total = frames_to_process

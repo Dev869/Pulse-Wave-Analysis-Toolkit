@@ -1,0 +1,6 @@
+.git
+__pycache__
+ultrasound_results/
+*.pyc
+.gitignore
+CLAUDE.md

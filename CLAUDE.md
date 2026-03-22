@@ -50,7 +50,27 @@ python pwv_multiframe.py -p proximal.dcm -d distal.dcm -s 5.0
 
 # Windows shortcut
 PWV.bat
+
+# Docker
+docker build -t pwv-analyzer .
+docker run -p 8501:8501 pwv-analyzer
 ```
+
+## Deployment
+
+The app is containerized with Docker for cloud deployment. Recommended free platforms:
+
+- **[Render](https://render.com)** — Free tier, auto-deploys from GitHub, supports Docker
+- **[Railway](https://railway.app)** — Free trial credits, git-push deploys
+- **[Fly.io](https://fly.io)** — Free tier with 3 shared VMs
+
+Deploy steps (Render example):
+1. Push repo to GitHub
+2. Create a new "Web Service" on Render, connect the repo
+3. Render auto-detects the Dockerfile
+4. Set environment to Docker, deploy
+
+**Headless limitation**: The tkinter distance picker (`distance_tool.py`) requires a display and won't work in cloud. A manual distance input fallback is provided in the Upload tab.
 
 ## Dependencies
 
